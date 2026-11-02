@@ -4,7 +4,7 @@ Ask a business question in plain English and get back an answer, a chart, the re
 
 I built AskData on the [Olist Brazilian e-commerce dataset](https://www.kaggle.com/datasets/olistbr/brazilian-ecommerce): about 100,000 orders placed between September 2016 and October 2018, with their items, payments, reviews, customers, products and sellers. You type something like "Which customer states have the highest share of late deliveries?" and the app writes one PostgreSQL query, checks it is safe, runs it on a read-only database user, and shows the result. Every answer can be inspected and the SQL can be edited and run again.
 
-**Live demo:** 
+**Live demo:** https://askdata-in.streamlit.app/
 
 ## What it does
 
