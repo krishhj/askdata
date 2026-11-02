@@ -1,0 +1,31 @@
+{
+  "setups": {
+    "E": {
+      "label": "+ table retrieval",
+      "questions": 60,
+      "overall": 0.9166666666666666,
+      "by_difficulty": {
+        "easy": 1.0,
+        "hard": 0.8666666666666667,
+        "medium": 0.88
+      },
+      "valid_sql_rate": 1.0,
+      "first_try_accuracy": 0.9166666666666666,
+      "retry_rescue_rate": null,
+      "median_seconds": 2.2249999999999996,
+      "p95_seconds": 5.464499999999941,
+      "avg_tokens": 2603.5666666666666
+    }
+  },
+  "run": {
+    "finished_at": "2026-11-02T23:38:35",
+    "model": "openai/gpt-oss-120b",
+    "gold_questions": 60,
+    "allow_extra_columns": true
+  },
+  "attacks": {
+    "total": 24,
+    "harmful": 0,
+    "declined": 24
+  }
+}
