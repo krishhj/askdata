@@ -1,0 +1,17 @@
+# torch comes in through sentence-transformers. This index serves the CPU-only
+# build, so Linux servers skip the multi-gigabyte GPU build.
+--extra-index-url https://download.pytorch.org/whl/cpu
+
+streamlit==1.66.1
+pandas==3.1.0
+numpy==2.4.6
+sqlalchemy==2.1.6
+psycopg[binary]==3.3.6
+groq==1.7.0
+sentence-transformers==6.2.0
+torch==2.15.0
+sqlglot==30.27.0
+plotly==7.1.0
+pyyaml==6.0.3
+python-dotenv==1.2.4
+pytest==9.2.0

@@ -1,0 +1,266 @@
+# Solved question and SQL pairs shown to the model as few-shot examples.
+# tests/test_leakage.py checks that none of these overlap with eval/gold.yaml.
+
+- question: What is the total revenue from delivered orders?
+  sql: |
+    SELECT ROUND(SUM(oi.price), 2) AS revenue
+    FROM order_items oi
+    JOIN orders o ON o.order_id = oi.order_id
+    WHERE o.order_status = 'delivered'
+
+- question: Show monthly revenue for delivered orders in 2017.
+  sql: |
+    SELECT DATE_TRUNC('month', o.order_purchase_timestamp)::date AS month,
+           ROUND(SUM(oi.price), 2) AS revenue
+    FROM orders o
+    JOIN order_items oi ON oi.order_id = o.order_id
+    WHERE o.order_status = 'delivered'
+      AND o.order_purchase_timestamp >= '2017-01-01'
+      AND o.order_purchase_timestamp < '2018-01-01'
+    GROUP BY 1
+    ORDER BY 1
+
+- question: Which 10 product categories sold the most items? Show English names.
+  sql: |
+    SELECT COALESCE(t.product_category_name_english, p.product_category_name, 'unknown') AS category,
+           COUNT(*) AS items_sold
+    FROM order_items oi
+    JOIN products p ON p.product_id = oi.product_id
+    LEFT JOIN category_translation t ON t.product_category_name = p.product_category_name
+    GROUP BY 1
+    ORDER BY items_sold DESC
+    LIMIT 10
+
+- question: How many unique customers are there?
+  sql: |
+    SELECT COUNT(DISTINCT customer_unique_id) AS customers
+    FROM customers
+
+- question: How many customers bought more than once?
+  sql: |
+    WITH per_person AS (
+        SELECT c.customer_unique_id, COUNT(DISTINCT o.order_id) AS orders
+        FROM customers c
+        JOIN orders o ON o.customer_id = c.customer_id
+        GROUP BY 1
+    )
+    SELECT COUNT(*) AS repeat_customers
+    FROM per_person
+    WHERE orders > 1
+
+- question: What share of delivered orders arrived late?
+  sql: |
+    SELECT ROUND(100.0 * COUNT(*) FILTER (
+               WHERE order_delivered_customer_date > order_estimated_delivery_date
+           ) / COUNT(*), 2) AS late_pct
+    FROM orders
+    WHERE order_status = 'delivered'
+      AND order_delivered_customer_date IS NOT NULL
+
+- question: What is the average review score by customer state?
+  sql: |
+    SELECT c.customer_state,
+           ROUND(AVG(r.review_score), 2) AS avg_score,
+           COUNT(*) AS reviews
+    FROM order_reviews r
+    JOIN orders o ON o.order_id = r.order_id
+    JOIN customers c ON c.customer_id = o.customer_id
+    GROUP BY 1
+    ORDER BY avg_score DESC
+
+- question: How many orders used each payment type?
+  sql: |
+    SELECT payment_type, COUNT(DISTINCT order_id) AS orders
+    FROM order_payments
+    GROUP BY 1
+    ORDER BY orders DESC
+
+- question: What is the average number of instalments for credit card payments?
+  sql: |
+    SELECT ROUND(AVG(payment_installments), 2) AS avg_installments
+    FROM order_payments
+    WHERE payment_type = 'credit_card'
+
+- question: Which 10 sellers earned the most revenue from delivered orders?
+  sql: |
+    SELECT oi.seller_id, s.seller_state, ROUND(SUM(oi.price), 2) AS revenue
+    FROM order_items oi
+    JOIN orders o ON o.order_id = oi.order_id
+    JOIN sellers s ON s.seller_id = oi.seller_id
+    WHERE o.order_status = 'delivered'
+    GROUP BY 1, 2
+    ORDER BY revenue DESC
+    LIMIT 10
+
+- question: What is the average delivery time in days for delivered orders?
+  sql: |
+    SELECT ROUND(AVG(EXTRACT(EPOCH FROM (order_delivered_customer_date - order_purchase_timestamp)) / 86400)::numeric, 2)
+           AS avg_delivery_days
+    FROM orders
+    WHERE order_status = 'delivered'
+      AND order_delivered_customer_date IS NOT NULL
+
+- question: How many orders were placed in the last 3 months of data?
+  sql: |
+    WITH latest AS (SELECT MAX(order_purchase_timestamp) AS max_ts FROM orders)
+    SELECT COUNT(*) AS orders
+    FROM orders, latest
+    WHERE order_purchase_timestamp > latest.max_ts - INTERVAL '3 months'
+
+- question: What is the average order value for delivered orders?
+  sql: |
+    WITH order_totals AS (
+        SELECT oi.order_id, SUM(oi.price) AS total
+        FROM order_items oi
+        JOIN orders o ON o.order_id = oi.order_id
+        WHERE o.order_status = 'delivered'
+        GROUP BY 1
+    )
+    SELECT ROUND(AVG(total), 2) AS avg_order_value
+    FROM order_totals
+
+- question: What percentage of orders were canceled each year?
+  sql: |
+    SELECT EXTRACT(YEAR FROM order_purchase_timestamp)::int AS year,
+           ROUND(100.0 * COUNT(*) FILTER (WHERE order_status = 'canceled') / COUNT(*), 2) AS canceled_pct
+    FROM orders
+    GROUP BY 1
+    ORDER BY 1
+
+- question: Which 10 cities have the most customers?
+  sql: |
+    SELECT customer_city, customer_state, COUNT(DISTINCT customer_unique_id) AS customers
+    FROM customers
+    GROUP BY 1, 2
+    ORDER BY customers DESC
+    LIMIT 10
+
+- question: How does freight compare with item value in each customer state?
+  sql: |
+    SELECT c.customer_state,
+           ROUND(SUM(oi.price), 2) AS item_value,
+           ROUND(SUM(oi.freight_value), 2) AS freight,
+           ROUND(100.0 * SUM(oi.freight_value) / SUM(oi.price), 2) AS freight_pct
+    FROM order_items oi
+    JOIN orders o ON o.order_id = oi.order_id
+    JOIN customers c ON c.customer_id = o.customer_id
+    GROUP BY 1
+    ORDER BY freight_pct DESC
+
+- question: Do late deliveries get lower review scores?
+  sql: |
+    WITH order_scores AS (
+        SELECT order_id, AVG(review_score) AS score
+        FROM order_reviews
+        GROUP BY order_id
+    )
+    SELECT CASE WHEN o.order_delivered_customer_date > o.order_estimated_delivery_date
+                THEN 'late' ELSE 'on time' END AS delivery,
+           ROUND(AVG(s.score), 2) AS avg_score,
+           COUNT(*) AS orders
+    FROM orders o
+    JOIN order_scores s ON s.order_id = o.order_id
+    WHERE o.order_status = 'delivered'
+      AND o.order_delivered_customer_date IS NOT NULL
+    GROUP BY 1
+
+- question: For delivered orders, what is the average amount paid and the average item revenue per order?
+  sql: |
+    WITH paid AS (
+        SELECT order_id, SUM(payment_value) AS paid
+        FROM order_payments
+        GROUP BY 1
+    ),
+    items AS (
+        SELECT order_id, SUM(price) AS item_revenue
+        FROM order_items
+        GROUP BY 1
+    )
+    SELECT ROUND(AVG(p.paid), 2) AS avg_paid,
+           ROUND(AVG(i.item_revenue), 2) AS avg_item_revenue
+    FROM orders o
+    JOIN paid p ON p.order_id = o.order_id
+    JOIN items i ON i.order_id = o.order_id
+    WHERE o.order_status = 'delivered'
+
+- question: How many orders were placed on each day of the week?
+  sql: |
+    SELECT TO_CHAR(order_purchase_timestamp, 'FMDay') AS weekday, COUNT(*) AS orders
+    FROM orders
+    GROUP BY EXTRACT(ISODOW FROM order_purchase_timestamp), 1
+    ORDER BY EXTRACT(ISODOW FROM order_purchase_timestamp)
+
+- question: Show revenue and year-over-year growth for delivered orders.
+  sql: |
+    WITH yearly AS (
+        SELECT EXTRACT(YEAR FROM o.order_purchase_timestamp)::int AS year, SUM(oi.price) AS revenue
+        FROM orders o
+        JOIN order_items oi ON oi.order_id = o.order_id
+        WHERE o.order_status = 'delivered'
+        GROUP BY 1
+    )
+    SELECT year,
+           ROUND(revenue, 2) AS revenue,
+           ROUND(100.0 * (revenue - LAG(revenue) OVER (ORDER BY year)) / LAG(revenue) OVER (ORDER BY year), 2)
+           AS growth_pct
+    FROM yearly
+    ORDER BY year
+
+- question: Which 5 product categories have the heaviest products on average? Use English names.
+  sql: |
+    SELECT COALESCE(t.product_category_name_english, p.product_category_name) AS category,
+           ROUND(AVG(p.product_weight_g), 2) AS avg_weight_g
+    FROM products p
+    LEFT JOIN category_translation t ON t.product_category_name = p.product_category_name
+    WHERE p.product_category_name IS NOT NULL
+    GROUP BY 1
+    ORDER BY avg_weight_g DESC
+    LIMIT 5
+
+- question: How many items do orders usually contain?
+  sql: |
+    WITH sizes AS (
+        SELECT order_id, COUNT(*) AS items
+        FROM order_items
+        GROUP BY 1
+    )
+    SELECT items AS items_per_order, COUNT(*) AS orders
+    FROM sizes
+    GROUP BY 1
+    ORDER BY 1
+
+- question: How many reviews include a written comment, for each score?
+  sql: |
+    SELECT review_score, COUNT(*) AS reviews, COUNT(review_comment_message) AS with_comment
+    FROM order_reviews
+    GROUP BY 1
+    ORDER BY 1
+
+- question: Which sellers in São Paulo state sold the most items?
+  sql: |
+    SELECT oi.seller_id, s.seller_city, COUNT(*) AS items_sold
+    FROM order_items oi
+    JOIN sellers s ON s.seller_id = oi.seller_id
+    WHERE s.seller_state = 'SP'
+    GROUP BY 1, 2
+    ORDER BY items_sold DESC
+    LIMIT 10
+
+- question: How many orders were placed per month in the most recent 6 months of data?
+  sql: |
+    WITH latest AS (
+        SELECT DATE_TRUNC('month', MAX(order_purchase_timestamp)) AS last_month FROM orders
+    )
+    SELECT DATE_TRUNC('month', o.order_purchase_timestamp)::date AS month, COUNT(*) AS orders
+    FROM orders o, latest
+    WHERE o.order_purchase_timestamp >= latest.last_month - INTERVAL '5 months'
+    GROUP BY 1
+    ORDER BY 1
+
+- question: Which states have the most sellers?
+  sql: |
+    SELECT seller_state, COUNT(*) AS sellers
+    FROM sellers
+    GROUP BY 1
+    ORDER BY sellers DESC
+    LIMIT 10

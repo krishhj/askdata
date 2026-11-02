@@ -1,0 +1,13 @@
+# No base is set, so the app follows each viewer's light or dark preference.
+[theme]
+primaryColor = "#0D9488"
+baseRadius = "0.6rem"
+buttonRadius = "medium"
+showSidebarBorder = true
+chartCategoricalColors = ["#0D9488", "#6366F1", "#F59E0B", "#EC4899", "#64748B"]
+
+[client]
+toolbarMode = "minimal"
+
+[browser]
+gatherUsageStats = false

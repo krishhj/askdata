@@ -1,0 +1,127 @@
+global_notes:
+  - Data covers 2016-09-04 to 2018-10-17. Relative dates such as "last month" or "this year" are relative to the latest order date in the data, MAX(orders.order_purchase_timestamp), never to today. Do not use NOW() or CURRENT_DATE.
+  - Orders are sparse at both ends of the range. September and October 2018 have only 20 orders combined, and the last full month of normal activity is August 2018. State this in the assumptions when a question lands on those months.
+  - Revenue means SUM(order_items.price). Freight is separate and only included if asked for. Do not use payment_value for revenue, because it differs through vouchers and instalments.
+  - Most revenue questions should filter orders.order_status = 'delivered'. State this filter in the assumptions.
+  - Count people with COUNT(DISTINCT customers.customer_unique_id). customer_id is unique per order, so counting it counts orders.
+  - Category names are in Portuguese. Show English names by joining category_translation, using LEFT JOIN so that products without a translation are kept.
+  - A late delivery means order_delivered_customer_date > order_estimated_delivery_date. Orders with no delivery date are neither late nor on time.
+  - Joining order_items, order_payments or order_reviews to each other multiplies rows, because each can have several rows per order. Aggregate each one to order level in a CTE first when combining them.
+
+joins:
+  - {from: orders.customer_id, to: customers.customer_id}
+  - {from: order_items.order_id, to: orders.order_id}
+  - {from: order_payments.order_id, to: orders.order_id}
+  - {from: order_reviews.order_id, to: orders.order_id}
+  - {from: order_items.product_id, to: products.product_id}
+  - {from: order_items.seller_id, to: sellers.seller_id}
+  # Not a real foreign key, because two categories have no translation row.
+  # It is here so that retrieval brings in the translations alongside products.
+  - {from: products.product_category_name, to: category_translation.product_category_name}
+
+tables:
+  orders:
+    description: One row per customer order, with its status and its purchase, approval, carrier and delivery dates. Use for order counts, sales over time, order status and delivery performance or late deliveries.
+    notes:
+      - order_status values are delivered, shipped, canceled, unavailable, invoiced, processing, created and approved. Canceled has one l.
+      - 775 orders have no rows in order_items, mostly orders that never completed.
+    columns:
+      order_id: {type: text, description: Primary key}
+      customer_id: {type: text, description: Foreign key to customers. Unique per order; it does not identify a person.}
+      order_status: {type: text, description: Current state of the order}
+      order_purchase_timestamp: {type: timestamp, description: When the customer placed the order. Use this as the order date.}
+      order_approved_at: {type: timestamp, description: When payment was approved. Can be null.}
+      order_delivered_carrier_date: {type: timestamp, description: When the order was handed to the carrier. Can be null.}
+      order_delivered_customer_date: {type: timestamp, description: When the customer received the order. Can be null.}
+      order_estimated_delivery_date: {type: timestamp, description: Delivery date promised at purchase}
+
+  order_items:
+    description: One row per item in an order, with the product, seller, price and freight. Use for revenue, sales, units sold, best-selling products or categories, seller performance and freight costs.
+    notes:
+      - Each row is one unit and there is no quantity column, so COUNT(*) gives units sold.
+      - order_item_id is the item's position within its order (1, 2, 3 and so on), not a globally unique ID.
+      - price and freight_value are per item.
+    columns:
+      order_id: {type: text, description: Part of primary key. Foreign key to orders.}
+      order_item_id: {type: integer, description: Part of primary key. Position of the item within the order.}
+      product_id: {type: text, description: Foreign key to products}
+      seller_id: {type: text, description: Foreign key to sellers}
+      shipping_limit_date: {type: timestamp, description: Deadline for the seller to hand the item to the carrier}
+      price: {type: "numeric(10,2)", description: Item price in Brazilian reais (BRL). Revenue is the sum of this column.}
+      freight_value: {type: "numeric(10,2)", description: Freight charged for this item in BRL}
+
+  order_payments:
+    description: One row per payment used on an order, with payment method, instalments and amount paid. Use for questions about payment types, credit card, boleto, vouchers, instalments and amounts paid by customers.
+    notes:
+      - An order can have several rows, for example a voucher plus a credit card. To get an order's total, sum its rows.
+      - payment_type values are credit_card, boleto, voucher, debit_card and not_defined.
+    columns:
+      order_id: {type: text, description: Part of primary key. Foreign key to orders.}
+      payment_sequential: {type: integer, description: Part of primary key. Sequence number of this payment within the order.}
+      payment_type: {type: text, description: Payment method}
+      payment_installments: {type: integer, description: Number of instalments chosen}
+      payment_value: {type: "numeric(10,2)", description: Amount paid in this payment row in BRL}
+
+  order_reviews:
+    description: Customer satisfaction reviews of orders, with a score from 1 to 5 and optional written comments. Use for ratings, review scores, customer satisfaction and complaints.
+    notes:
+      - review_id is not unique, because the same review can cover several orders. The primary key is (review_id, order_id).
+      - 547 orders have more than one review, so joining reviews to orders or order_items can multiply rows.
+      - Comments are in Portuguese and are usually empty.
+    columns:
+      review_id: {type: text, description: Part of primary key. Identifies the review, but can repeat across orders.}
+      order_id: {type: text, description: Part of primary key. Foreign key to orders.}
+      review_score: {type: smallint, description: Score from 1 (worst) to 5 (best)}
+      review_comment_title: {type: text, description: Optional title in Portuguese}
+      review_comment_message: {type: text, description: Optional comment in Portuguese}
+      review_creation_date: {type: timestamp, description: When the review survey was sent}
+      review_answer_timestamp: {type: timestamp, description: When the customer answered}
+
+  customers:
+    description: The customer record for each order, with a person identifier and location. Use for counting customers, repeat buyers, and customer city or state.
+    notes:
+      - There is one row per order, not per person. customer_unique_id identifies the person, and a repeat buyer has several customer_id values.
+      - customer_state holds two-letter Brazilian state codes in upper case, such as SP or RJ.
+      - City names are lower case, usually without accents.
+    columns:
+      customer_id: {type: text, description: Primary key. One per order.}
+      customer_unique_id: {type: text, description: Identifies the actual person. Use this to count customers.}
+      customer_zip_code_prefix: {type: text, description: First five digits of the zip code}
+      customer_city: {type: text, description: City in lower case}
+      customer_state: {type: text, description: Two-letter state code}
+
+  products:
+    description: Product catalogue with Portuguese category name, listing details, weight and dimensions. Use for product categories, product size and weight.
+    notes:
+      - product_category_name is in Portuguese. Join category_translation for English names.
+      - 610 products have no category.
+      - The columns product_name_lenght and product_description_lenght are misspelled in the source. Use the spelling shown here.
+    columns:
+      product_id: {type: text, description: Primary key}
+      product_category_name: {type: text, description: Category in Portuguese. Can be null.}
+      product_name_lenght: {type: integer, description: Number of characters in the product name}
+      product_description_lenght: {type: integer, description: Number of characters in the description}
+      product_photos_qty: {type: integer, description: Number of photos in the listing}
+      product_weight_g: {type: integer, description: Weight in grams}
+      product_length_cm: {type: integer, description: Length in centimetres}
+      product_height_cm: {type: integer, description: Height in centimetres}
+      product_width_cm: {type: integer, description: Width in centimetres}
+
+  sellers:
+    description: Marketplace sellers and their locations. Use for questions about sellers and seller city or state. Join order_items for seller revenue or items sold.
+    notes:
+      - seller_state holds two-letter Brazilian state codes in upper case.
+    columns:
+      seller_id: {type: text, description: Primary key}
+      seller_zip_code_prefix: {type: text, description: First five digits of the zip code}
+      seller_city: {type: text, description: City in lower case}
+      seller_state: {type: text, description: Two-letter state code}
+
+  category_translation:
+    description: Lookup table that translates Portuguese product category names into English. Use whenever results show or filter product categories.
+    notes:
+      - pc_gamer and portateis_cozinha_e_preparadores_de_alimentos have no translation row, so use LEFT JOIN from products.
+      - English names use underscores, such as health_beauty.
+    columns:
+      product_category_name: {type: text, description: Primary key. Portuguese category name.}
+      product_category_name_english: {type: text, description: English category name}

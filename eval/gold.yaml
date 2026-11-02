@@ -1,0 +1,729 @@
+# Gold questions for evaluation. Every gold_sql must be run and checked by hand,
+# then marked verified: true. run_eval.py refuses to run while any entry is unverified.
+# Gold queries return only the columns the question asks for; compare.py decides
+# whether extra columns in a generated answer are allowed (see EVAL_ALLOW_EXTRA_COLUMNS).
+
+# Easy: one table or one simple join
+- id: e01
+  difficulty: easy
+  question: How many orders are there in total?
+  gold_sql: SELECT COUNT(*) AS orders FROM orders
+  ordered: false
+  verified: true
+- id: e02
+  difficulty: easy
+  question: How many sellers are on the marketplace?
+  gold_sql: SELECT COUNT(*) AS sellers FROM sellers
+  ordered: false
+  verified: true
+- id: e03
+  difficulty: easy
+  question: How many orders were canceled?
+  gold_sql: SELECT COUNT(*) AS orders FROM orders WHERE order_status = 'canceled'
+  ordered: false
+  verified: true
+- id: e04
+  difficulty: easy
+  question: How many products have no category?
+  gold_sql: SELECT COUNT(*) AS products FROM products WHERE product_category_name IS NULL
+  ordered: false
+  verified: true
+- id: e05
+  difficulty: easy
+  question: What is the average review score across all reviews?
+  gold_sql: SELECT ROUND(AVG(review_score), 2) AS avg_score FROM order_reviews
+  ordered: false
+  verified: true
+- id: e06
+  difficulty: easy
+  question: How many orders are there in each order status?
+  gold_sql: |
+    SELECT order_status, COUNT(*) AS orders
+    FROM orders
+    GROUP BY 1
+  ordered: false
+  verified: true
+- id: e07
+  difficulty: easy
+  question: Which 5 customer states placed the most orders?
+  gold_sql: |
+    SELECT c.customer_state
+    FROM orders o
+    JOIN customers c ON c.customer_id = o.customer_id
+    GROUP BY 1
+    ORDER BY COUNT(*) DESC
+    LIMIT 5
+  ordered: true
+  verified: true
+- id: e08
+  difficulty: easy
+  question: What is the highest price paid for a single item?
+  gold_sql: SELECT MAX(price) AS max_price FROM order_items
+  ordered: false
+  verified: true
+- id: e09
+  difficulty: easy
+  question: How many reviews have a score of 1?
+  gold_sql: SELECT COUNT(*) AS reviews FROM order_reviews WHERE review_score = 1
+  ordered: false
+  verified: true
+- id: e10
+  difficulty: easy
+  question: What is the total freight charged across all order items?
+  gold_sql: SELECT ROUND(SUM(freight_value), 2) AS freight FROM order_items
+  ordered: false
+  verified: true
+- id: e11
+  difficulty: easy
+  question: How many different product categories are there in the products table?
+  gold_sql: SELECT COUNT(DISTINCT product_category_name) AS categories FROM products
+  ordered: false
+  verified: true
+- id: e12
+  difficulty: easy
+  question: What is the purchase timestamp of the earliest order?
+  gold_sql: SELECT MIN(order_purchase_timestamp) AS first_purchase FROM orders
+  ordered: false
+  verified: true
+- id: e13
+  difficulty: easy
+  question: How many orders were placed in 2017?
+  gold_sql: |
+    SELECT COUNT(*) AS orders
+    FROM orders
+    WHERE order_purchase_timestamp >= '2017-01-01'
+      AND order_purchase_timestamp < '2018-01-01'
+  ordered: false
+  verified: true
+- id: e14
+  difficulty: easy
+  question: What is the average price of an order item?
+  gold_sql: SELECT ROUND(AVG(price), 2) AS avg_price FROM order_items
+  ordered: false
+  verified: true
+- id: e15
+  difficulty: easy
+  question: How many payment records used a voucher?
+  gold_sql: SELECT COUNT(*) AS payments FROM order_payments WHERE payment_type = 'voucher'
+  ordered: false
+  verified: true
+- id: e16
+  difficulty: easy
+  question: What is the most common number of payment instalments?
+  gold_sql: |
+    SELECT payment_installments
+    FROM order_payments
+    GROUP BY 1
+    ORDER BY COUNT(*) DESC
+    LIMIT 1
+  ordered: false
+  verified: true
+- id: e17
+  difficulty: easy
+  question: How many sellers are based in Rio de Janeiro state?
+  gold_sql: SELECT COUNT(*) AS sellers FROM sellers WHERE seller_state = 'RJ'
+  ordered: false
+  verified: true
+- id: e18
+  difficulty: easy
+  question: What is the weight in grams of the heaviest product?
+  gold_sql: SELECT MAX(product_weight_g) AS max_weight_g FROM products
+  ordered: false
+  verified: true
+- id: e19
+  difficulty: easy
+  question: How many orders have been delivered?
+  gold_sql: SELECT COUNT(*) AS orders FROM orders WHERE order_status = 'delivered'
+  ordered: false
+  verified: true
+- id: e20
+  difficulty: easy
+  question: Which city has the most sellers?
+  gold_sql: |
+    SELECT seller_city
+    FROM sellers
+    GROUP BY 1
+    ORDER BY COUNT(*) DESC
+    LIMIT 1
+  ordered: false
+  verified: true
+
+# Medium: several joins, filters, grouping or a data trap
+- id: m01
+  difficulty: medium
+  question: Of the orders placed in each month of 2018, how many were delivered?
+  gold_sql: |
+    SELECT DATE_TRUNC('month', order_purchase_timestamp)::date AS month, COUNT(*) AS orders
+    FROM orders
+    WHERE order_status = 'delivered'
+      AND order_purchase_timestamp >= '2018-01-01'
+      AND order_purchase_timestamp < '2019-01-01'
+    GROUP BY 1
+    ORDER BY 1
+  ordered: true
+  verified: true
+- id: m02
+  difficulty: medium
+  question: Which 5 product categories have the highest average item price? Use English names.
+  gold_sql: |
+    SELECT COALESCE(t.product_category_name_english, p.product_category_name) AS category
+    FROM order_items oi
+    JOIN products p ON p.product_id = oi.product_id
+    LEFT JOIN category_translation t ON t.product_category_name = p.product_category_name
+    WHERE p.product_category_name IS NOT NULL
+    GROUP BY 1
+    ORDER BY AVG(oi.price) DESC
+    LIMIT 5
+  ordered: true
+  verified: true
+- id: m03
+  difficulty: medium
+  question: How many orders did customers in each state place in 2018?
+  gold_sql: |
+    SELECT c.customer_state, COUNT(*) AS orders
+    FROM orders o
+    JOIN customers c ON c.customer_id = o.customer_id
+    WHERE o.order_purchase_timestamp >= '2018-01-01'
+      AND o.order_purchase_timestamp < '2019-01-01'
+    GROUP BY 1
+  ordered: false
+  verified: true
+- id: m04
+  difficulty: medium
+  question: What percentage of orders included a boleto payment?
+  gold_sql: |
+    SELECT ROUND(100.0 * COUNT(DISTINCT order_id) FILTER (WHERE payment_type = 'boleto')
+                 / COUNT(DISTINCT order_id), 2) AS boleto_pct
+    FROM order_payments
+  ordered: false
+  verified: true
+- id: m05
+  difficulty: medium
+  question: Which 5 product categories have the highest average freight per item? Use English names.
+  gold_sql: |
+    SELECT COALESCE(t.product_category_name_english, p.product_category_name) AS category
+    FROM order_items oi
+    JOIN products p ON p.product_id = oi.product_id
+    LEFT JOIN category_translation t ON t.product_category_name = p.product_category_name
+    WHERE p.product_category_name IS NOT NULL
+    GROUP BY 1
+    ORDER BY AVG(oi.freight_value) DESC
+    LIMIT 5
+  ordered: true
+  verified: true
+- id: m06
+  difficulty: medium
+  question: How many distinct people bought from us in each state?
+  gold_sql: |
+    SELECT customer_state, COUNT(DISTINCT customer_unique_id) AS customers
+    FROM customers
+    GROUP BY 1
+  ordered: false
+  verified: true
+- id: m07
+  difficulty: medium
+  question: Which 5 customer states wait the longest for deliveries on average?
+  gold_sql: |
+    SELECT c.customer_state
+    FROM orders o
+    JOIN customers c ON c.customer_id = o.customer_id
+    WHERE o.order_status = 'delivered'
+      AND o.order_delivered_customer_date IS NOT NULL
+    GROUP BY 1
+    ORDER BY AVG(o.order_delivered_customer_date - o.order_purchase_timestamp) DESC
+    LIMIT 5
+  ordered: true
+  verified: true
+- id: m08
+  difficulty: medium
+  question: How many orders were placed in each quarter of 2017?
+  gold_sql: |
+    SELECT DATE_TRUNC('quarter', order_purchase_timestamp)::date AS quarter, COUNT(*) AS orders
+    FROM orders
+    WHERE order_purchase_timestamp >= '2017-01-01'
+      AND order_purchase_timestamp < '2018-01-01'
+    GROUP BY 1
+    ORDER BY 1
+  ordered: true
+  verified: true
+- id: m09
+  difficulty: medium
+  question: What is the largest number of items in a single order?
+  gold_sql: |
+    WITH per_order AS (
+        SELECT order_id, COUNT(*) AS items
+        FROM order_items
+        GROUP BY 1
+    )
+    SELECT MAX(items) AS max_items FROM per_order
+  ordered: false
+  verified: true
+- id: m10
+  difficulty: medium
+  question: How many orders were canceled in each month of 2018?
+  gold_sql: |
+    SELECT DATE_TRUNC('month', order_purchase_timestamp)::date AS month, COUNT(*) AS orders
+    FROM orders
+    WHERE order_status = 'canceled'
+      AND order_purchase_timestamp >= '2018-01-01'
+      AND order_purchase_timestamp < '2019-01-01'
+    GROUP BY 1
+    ORDER BY 1
+  ordered: true
+  verified: true
+- id: m11
+  difficulty: medium
+  question: Which 5 cities in Minas Gerais (MG) have the most orders?
+  gold_sql: |
+    SELECT c.customer_city
+    FROM orders o
+    JOIN customers c ON c.customer_id = o.customer_id
+    WHERE c.customer_state = 'MG'
+    GROUP BY 1
+    ORDER BY COUNT(*) DESC
+    LIMIT 5
+  ordered: true
+  verified: true
+- id: m12
+  difficulty: medium
+  question: What is the average payment amount for each payment type?
+  gold_sql: |
+    SELECT payment_type, ROUND(AVG(payment_value), 2) AS avg_payment
+    FROM order_payments
+    GROUP BY 1
+  ordered: false
+  verified: true
+- id: m13
+  difficulty: medium
+  question: How many distinct sellers sold products in each product category? Use English names.
+  gold_sql: |
+    SELECT COALESCE(t.product_category_name_english, p.product_category_name) AS category,
+           COUNT(DISTINCT oi.seller_id) AS sellers
+    FROM order_items oi
+    JOIN products p ON p.product_id = oi.product_id
+    LEFT JOIN category_translation t ON t.product_category_name = p.product_category_name
+    WHERE p.product_category_name IS NOT NULL
+    GROUP BY 1
+  ordered: false
+  verified: true
+- id: m14
+  difficulty: medium
+  question: What percentage of reviews gave the maximum score of 5?
+  gold_sql: |
+    SELECT ROUND(100.0 * COUNT(*) FILTER (WHERE review_score = 5) / COUNT(*), 2) AS five_star_pct
+    FROM order_reviews
+  ordered: false
+  verified: true
+- id: m15
+  difficulty: medium
+  question: How much revenue did delivered orders generate in the final 60 days of the data?
+  gold_sql: |
+    WITH latest AS (SELECT MAX(order_purchase_timestamp) AS max_ts FROM orders)
+    SELECT ROUND(SUM(oi.price), 2) AS revenue
+    FROM orders o
+    JOIN order_items oi ON oi.order_id = o.order_id
+    CROSS JOIN latest
+    WHERE o.order_status = 'delivered'
+      AND o.order_purchase_timestamp > latest.max_ts - INTERVAL '60 days'
+  ordered: false
+  verified: true
+- id: m16
+  difficulty: medium
+  question: What is the average number of instalments for each payment type?
+  gold_sql: |
+    SELECT payment_type, ROUND(AVG(payment_installments), 2) AS avg_installments
+    FROM order_payments
+    GROUP BY 1
+  ordered: false
+  verified: true
+- id: m17
+  difficulty: medium
+  question: What is the average delivered order value for customers in each state?
+  gold_sql: |
+    WITH order_totals AS (
+        SELECT o.order_id, c.customer_state, SUM(oi.price) AS total
+        FROM orders o
+        JOIN order_items oi ON oi.order_id = o.order_id
+        JOIN customers c ON c.customer_id = o.customer_id
+        WHERE o.order_status = 'delivered'
+        GROUP BY 1, 2
+    )
+    SELECT customer_state, ROUND(AVG(total), 2) AS avg_order_value
+    FROM order_totals
+    GROUP BY 1
+  ordered: false
+  verified: true
+- id: m18
+  difficulty: medium
+  question: How many orders contained items from more than one seller?
+  gold_sql: |
+    WITH sellers_per_order AS (
+        SELECT order_id, COUNT(DISTINCT seller_id) AS sellers
+        FROM order_items
+        GROUP BY 1
+    )
+    SELECT COUNT(*) AS orders FROM sellers_per_order WHERE sellers > 1
+  ordered: false
+  verified: true
+- id: m19
+  difficulty: medium
+  question: Of the orders placed in each month of 2018, how many were delivered late?
+  gold_sql: |
+    SELECT DATE_TRUNC('month', order_purchase_timestamp)::date AS month, COUNT(*) AS late_orders
+    FROM orders
+    WHERE order_status = 'delivered'
+      AND order_delivered_customer_date > order_estimated_delivery_date
+      AND order_purchase_timestamp >= '2018-01-01'
+      AND order_purchase_timestamp < '2019-01-01'
+    GROUP BY 1
+    ORDER BY 1
+  ordered: true
+  verified: true
+- id: m20
+  difficulty: medium
+  question: On average, how many hours pass between purchase and payment approval?
+  gold_sql: |
+    SELECT ROUND((AVG(EXTRACT(EPOCH FROM (order_approved_at - order_purchase_timestamp))) / 3600)::numeric, 2)
+           AS avg_hours
+    FROM orders
+    WHERE order_approved_at IS NOT NULL
+  ordered: false
+  verified: true
+- id: m21
+  difficulty: medium
+  question: What was the delivered revenue from customers in each state in 2018?
+  gold_sql: |
+    SELECT c.customer_state, ROUND(SUM(oi.price), 2) AS revenue
+    FROM orders o
+    JOIN order_items oi ON oi.order_id = o.order_id
+    JOIN customers c ON c.customer_id = o.customer_id
+    WHERE o.order_status = 'delivered'
+      AND o.order_purchase_timestamp >= '2018-01-01'
+      AND o.order_purchase_timestamp < '2019-01-01'
+    GROUP BY 1
+  ordered: false
+  verified: true
+- id: m22
+  difficulty: medium
+  question: What is the median price of an order item?
+  gold_sql: |
+    SELECT PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY price) AS median_price
+    FROM order_items
+  ordered: false
+  verified: true
+- id: m23
+  difficulty: medium
+  question: How many customers made their first ever purchase in 2018?
+  gold_sql: |
+    WITH first_orders AS (
+        SELECT c.customer_unique_id, MIN(o.order_purchase_timestamp) AS first_purchase
+        FROM customers c
+        JOIN orders o ON o.customer_id = c.customer_id
+        GROUP BY 1
+    )
+    SELECT COUNT(*) AS customers
+    FROM first_orders
+    WHERE first_purchase >= '2018-01-01' AND first_purchase < '2019-01-01'
+  ordered: false
+  verified: true
+- id: m24
+  difficulty: medium
+  question: How many orders were placed on Saturdays or Sundays?
+  gold_sql: |
+    SELECT COUNT(*) AS orders
+    FROM orders
+    WHERE EXTRACT(ISODOW FROM order_purchase_timestamp) IN (6, 7)
+  ordered: false
+  verified: true
+- id: m25
+  difficulty: medium
+  question: What is the average review score for each order status?
+  gold_sql: |
+    SELECT o.order_status, ROUND(AVG(r.review_score), 2) AS avg_score
+    FROM order_reviews r
+    JOIN orders o ON o.order_id = r.order_id
+    GROUP BY 1
+  ordered: false
+  verified: true
+
+# Hard: CTEs, window functions, row multiplication traps or several steps
+- id: h01
+  difficulty: hard
+  question: Among sellers with at least 100 reviewed orders, which 3 have the highest average review score?
+  gold_sql: |
+    WITH order_scores AS (
+        SELECT order_id, AVG(review_score) AS score
+        FROM order_reviews
+        GROUP BY 1
+    ),
+    seller_orders AS (
+        SELECT DISTINCT seller_id, order_id FROM order_items
+    )
+    SELECT so.seller_id
+    FROM seller_orders so
+    JOIN order_scores s ON s.order_id = so.order_id
+    GROUP BY 1
+    HAVING COUNT(*) >= 100
+    ORDER BY AVG(s.score) DESC
+    LIMIT 3
+  ordered: true
+  verified: true
+- id: h02
+  difficulty: hard
+  question: What percentage of distinct customers came back and ordered again?
+  gold_sql: |
+    WITH per_person AS (
+        SELECT c.customer_unique_id, COUNT(DISTINCT o.order_id) AS orders
+        FROM customers c
+        JOIN orders o ON o.customer_id = c.customer_id
+        GROUP BY 1
+    )
+    SELECT ROUND(100.0 * COUNT(*) FILTER (WHERE orders > 1) / COUNT(*), 2) AS repeat_pct
+    FROM per_person
+  ordered: false
+  verified: true
+- id: h03
+  difficulty: hard
+  question: For each year, which product category (in English) earned the most delivered revenue?
+  gold_sql: |
+    WITH yearly AS (
+        SELECT EXTRACT(YEAR FROM o.order_purchase_timestamp)::int AS year,
+               COALESCE(t.product_category_name_english, p.product_category_name) AS category,
+               SUM(oi.price) AS revenue
+        FROM orders o
+        JOIN order_items oi ON oi.order_id = o.order_id
+        JOIN products p ON p.product_id = oi.product_id
+        LEFT JOIN category_translation t ON t.product_category_name = p.product_category_name
+        WHERE o.order_status = 'delivered'
+          AND p.product_category_name IS NOT NULL
+        GROUP BY 1, 2
+    ),
+    ranked AS (
+        SELECT year, category, RANK() OVER (PARTITION BY year ORDER BY revenue DESC) AS rnk
+        FROM yearly
+    )
+    SELECT year, category FROM ranked WHERE rnk = 1
+  ordered: false
+  verified: true
+- id: h04
+  difficulty: hard
+  question: >-
+    For January to August 2018, what was the percentage change in delivered revenue
+    compared with the previous month? Leave January empty.
+  gold_sql: |
+    WITH monthly AS (
+        SELECT DATE_TRUNC('month', o.order_purchase_timestamp)::date AS month, SUM(oi.price) AS revenue
+        FROM orders o
+        JOIN order_items oi ON oi.order_id = o.order_id
+        WHERE o.order_status = 'delivered'
+          AND o.order_purchase_timestamp >= '2018-01-01'
+          AND o.order_purchase_timestamp < '2018-09-01'
+        GROUP BY 1
+    )
+    SELECT month,
+           ROUND(100.0 * (revenue - LAG(revenue) OVER (ORDER BY month)) / LAG(revenue) OVER (ORDER BY month), 2)
+           AS change_pct
+    FROM monthly
+    ORDER BY month
+  ordered: true
+  verified: true
+- id: h05
+  difficulty: hard
+  question: >-
+    Among product categories with at least 500 delivered orders, which one has the highest
+    percentage of late deliveries? Use the English name.
+  gold_sql: |
+    WITH order_categories AS (
+        SELECT DISTINCT o.order_id,
+               COALESCE(t.product_category_name_english, p.product_category_name) AS category,
+               o.order_delivered_customer_date > o.order_estimated_delivery_date AS is_late
+        FROM orders o
+        JOIN order_items oi ON oi.order_id = o.order_id
+        JOIN products p ON p.product_id = oi.product_id
+        LEFT JOIN category_translation t ON t.product_category_name = p.product_category_name
+        WHERE o.order_status = 'delivered'
+          AND o.order_delivered_customer_date IS NOT NULL
+          AND p.product_category_name IS NOT NULL
+    )
+    SELECT category
+    FROM order_categories
+    GROUP BY 1
+    HAVING COUNT(*) >= 500
+    ORDER BY AVG(CASE WHEN is_late THEN 1.0 ELSE 0.0 END) DESC
+    LIMIT 1
+  ordered: false
+  verified: true
+- id: h06
+  difficulty: hard
+  question: What is the average review score of orders that contain more than one item?
+  gold_sql: |
+    WITH multi_item AS (
+        SELECT order_id FROM order_items GROUP BY 1 HAVING COUNT(*) > 1
+    ),
+    order_scores AS (
+        SELECT order_id, AVG(review_score) AS score FROM order_reviews GROUP BY 1
+    )
+    SELECT ROUND(AVG(s.score), 2) AS avg_score
+    FROM multi_item m
+    JOIN order_scores s ON s.order_id = m.order_id
+  ordered: false
+  verified: true
+- id: h07
+  difficulty: hard
+  question: Which 3 customer states pay the highest average freight per order?
+  gold_sql: |
+    WITH order_freight AS (
+        SELECT o.order_id, c.customer_state, SUM(oi.freight_value) AS freight
+        FROM orders o
+        JOIN order_items oi ON oi.order_id = o.order_id
+        JOIN customers c ON c.customer_id = o.customer_id
+        GROUP BY 1, 2
+    )
+    SELECT customer_state
+    FROM order_freight
+    GROUP BY 1
+    ORDER BY AVG(freight) DESC
+    LIMIT 3
+  ordered: true
+  verified: true
+- id: h08
+  difficulty: hard
+  question: What share of delivered revenue comes from the top 10 sellers by delivered revenue?
+  gold_sql: |
+    WITH seller_revenue AS (
+        SELECT oi.seller_id, SUM(oi.price) AS revenue
+        FROM order_items oi
+        JOIN orders o ON o.order_id = oi.order_id
+        WHERE o.order_status = 'delivered'
+        GROUP BY 1
+    ),
+    top_sellers AS (
+        SELECT revenue FROM seller_revenue ORDER BY revenue DESC LIMIT 10
+    )
+    SELECT ROUND(100.0 * (SELECT SUM(revenue) FROM top_sellers)
+                 / (SELECT SUM(revenue) FROM seller_revenue), 2) AS top10_share_pct
+  ordered: false
+  verified: true
+- id: h09
+  difficulty: hard
+  question: How many distinct customers placed orders in at least 3 different calendar months?
+  gold_sql: |
+    WITH months AS (
+        SELECT c.customer_unique_id,
+               COUNT(DISTINCT DATE_TRUNC('month', o.order_purchase_timestamp)) AS active_months
+        FROM customers c
+        JOIN orders o ON o.customer_id = c.customer_id
+        GROUP BY 1
+    )
+    SELECT COUNT(*) AS customers FROM months WHERE active_months >= 3
+  ordered: false
+  verified: true
+- id: h10
+  difficulty: hard
+  question: What was the running total of delivered revenue at the end of each month in 2017?
+  gold_sql: |
+    WITH monthly AS (
+        SELECT DATE_TRUNC('month', o.order_purchase_timestamp)::date AS month, SUM(oi.price) AS revenue
+        FROM orders o
+        JOIN order_items oi ON oi.order_id = o.order_id
+        WHERE o.order_status = 'delivered'
+          AND o.order_purchase_timestamp >= '2017-01-01'
+          AND o.order_purchase_timestamp < '2018-01-01'
+        GROUP BY 1
+    )
+    SELECT month, ROUND(SUM(revenue) OVER (ORDER BY month), 2) AS cumulative_revenue
+    FROM monthly
+    ORDER BY month
+  ordered: true
+  verified: true
+- id: h11
+  difficulty: hard
+  question: For orders paid with more than one payment type, what is the average total amount paid per order?
+  gold_sql: |
+    WITH order_payments_total AS (
+        SELECT order_id, SUM(payment_value) AS paid
+        FROM order_payments
+        GROUP BY 1
+        HAVING COUNT(DISTINCT payment_type) > 1
+    )
+    SELECT ROUND(AVG(paid), 2) AS avg_paid FROM order_payments_total
+  ordered: false
+  verified: true
+- id: h12
+  difficulty: hard
+  question: >-
+    Among product categories with at least 1000 reviewed orders, which 3 have the highest
+    average review score? Use English names.
+  gold_sql: |
+    WITH order_scores AS (
+        SELECT order_id, AVG(review_score) AS score FROM order_reviews GROUP BY 1
+    ),
+    order_categories AS (
+        SELECT DISTINCT oi.order_id,
+               COALESCE(t.product_category_name_english, p.product_category_name) AS category
+        FROM order_items oi
+        JOIN products p ON p.product_id = oi.product_id
+        LEFT JOIN category_translation t ON t.product_category_name = p.product_category_name
+        WHERE p.product_category_name IS NOT NULL
+    )
+    SELECT oc.category
+    FROM order_categories oc
+    JOIN order_scores s ON s.order_id = oc.order_id
+    GROUP BY 1
+    HAVING COUNT(*) >= 1000
+    ORDER BY AVG(s.score) DESC
+    LIMIT 3
+  ordered: true
+  verified: true
+- id: h13
+  difficulty: hard
+  question: For customers with at least two orders, what is the average number of days between their first and second order?
+  gold_sql: |
+    WITH numbered AS (
+        SELECT c.customer_unique_id,
+               o.order_purchase_timestamp,
+               ROW_NUMBER() OVER (PARTITION BY c.customer_unique_id ORDER BY o.order_purchase_timestamp) AS n
+        FROM customers c
+        JOIN orders o ON o.customer_id = c.customer_id
+    ),
+    gaps AS (
+        SELECT f.customer_unique_id,
+               EXTRACT(EPOCH FROM (s.order_purchase_timestamp - f.order_purchase_timestamp)) / 86400 AS days
+        FROM numbered f
+        JOIN numbered s ON s.customer_unique_id = f.customer_unique_id AND f.n = 1 AND s.n = 2
+    )
+    SELECT ROUND(AVG(days)::numeric, 2) AS avg_days FROM gaps
+  ordered: false
+  verified: true
+- id: h14
+  difficulty: hard
+  question: For each month of 2018, what percentage of delivered orders arrived after the estimated date?
+  gold_sql: |
+    SELECT DATE_TRUNC('month', order_purchase_timestamp)::date AS month,
+           ROUND(100.0 * COUNT(*) FILTER (WHERE order_delivered_customer_date > order_estimated_delivery_date)
+                 / COUNT(*), 2) AS late_pct
+    FROM orders
+    WHERE order_status = 'delivered'
+      AND order_delivered_customer_date IS NOT NULL
+      AND order_purchase_timestamp >= '2018-01-01'
+      AND order_purchase_timestamp < '2019-01-01'
+    GROUP BY 1
+    ORDER BY 1
+  ordered: true
+  verified: true
+- id: h15
+  difficulty: hard
+  question: Which seller state earned the most delivered revenue from customers living in a different state?
+  gold_sql: |
+    SELECT s.seller_state
+    FROM order_items oi
+    JOIN sellers s ON s.seller_id = oi.seller_id
+    JOIN orders o ON o.order_id = oi.order_id
+    JOIN customers c ON c.customer_id = o.customer_id
+    WHERE o.order_status = 'delivered'
+      AND s.seller_state <> c.customer_state
+    GROUP BY 1
+    ORDER BY SUM(oi.price) DESC
+    LIMIT 1
+  ordered: false
+  verified: true
