@@ -1,0 +1,846 @@
+id,difficulty,correct,attempts,seconds,tokens,generated_sql,error,executed
+e01,easy,True,1,45.51,2457,"SELECT
+  COUNT(*) AS total_orders
+FROM orders
+LIMIT 500",,True
+e02,easy,True,1,1.61,2484,"SELECT
+  COUNT(*) AS seller_count
+FROM sellers
+LIMIT 500",,True
+e03,easy,True,1,2.3,2542,"SELECT
+  COUNT(*) AS canceled_orders
+FROM orders
+WHERE
+  order_status = 'canceled'
+LIMIT 500",,True
+e04,easy,True,1,1.14,2572,"SELECT
+  COUNT(*) AS no_category_cnt
+FROM products
+WHERE
+  product_category_name IS NULL
+LIMIT 500",,True
+e05,easy,True,1,2.3,2584,"SELECT
+  ROUND(CAST(AVG(review_score) AS DECIMAL), 2) AS avg_score
+FROM order_reviews
+LIMIT 500",,True
+e06,easy,True,1,1.12,2480,"SELECT
+  order_status AS status,
+  COUNT(*) AS orders
+FROM orders
+GROUP BY
+  order_status
+ORDER BY
+  orders DESC
+LIMIT 500",,True
+e07,easy,True,1,2.77,2684,"SELECT
+  c.customer_state AS state,
+  COUNT(*) AS orders
+FROM orders AS o
+JOIN customers AS c
+  ON o.customer_id = c.customer_id
+GROUP BY
+  c.customer_state
+ORDER BY
+  orders DESC
+LIMIT 5",,True
+e08,easy,True,1,1.95,2656,"SELECT
+  ROUND(MAX(price), 2) AS max_price
+FROM order_items
+LIMIT 500",,True
+e09,easy,True,1,1.2,2550,"SELECT
+  COUNT(*) AS review_cnt
+FROM order_reviews
+WHERE
+  review_score = 1
+LIMIT 500",,True
+e10,easy,True,1,1.11,2667,"SELECT
+  ROUND(SUM(freight_value), 2) AS total_freight
+FROM order_items
+LIMIT 500",,True
+e11,easy,True,1,2.32,2561,"SELECT
+  COUNT(DISTINCT product_category_name) AS category_count
+FROM products
+WHERE
+  product_category_name IS NOT NULL
+LIMIT 500",,True
+e12,easy,True,1,1.59,2492,"SELECT
+  MIN(order_purchase_timestamp) AS earliest_order
+FROM orders
+LIMIT 500",,True
+e13,easy,True,1,1.47,2544,"SELECT
+  COUNT(*) AS orders_2017
+FROM orders
+WHERE
+  EXTRACT(YEAR FROM order_purchase_timestamp) = 2017
+LIMIT 500",,True
+e14,easy,True,1,1.55,2635,"SELECT
+  ROUND(CAST(AVG(price) AS DECIMAL), 2) AS avg_item_price
+FROM order_items
+LIMIT 500",,True
+e15,easy,True,1,2.56,2450,"SELECT
+  COUNT(*) AS voucher_records
+FROM order_payments
+WHERE
+  payment_type = 'voucher'
+LIMIT 500",,True
+e16,easy,True,1,1.98,2640,"SELECT
+  payment_installments AS instalments,
+  COUNT(*) AS cnt
+FROM order_payments
+GROUP BY
+  payment_installments
+ORDER BY
+  cnt DESC
+LIMIT 1",,True
+e17,easy,True,1,1.84,2462,"SELECT
+  COUNT(*) AS seller_count
+FROM sellers
+WHERE
+  seller_state = 'RJ'
+LIMIT 500",,True
+e18,easy,True,1,1.76,2582,"SELECT
+  MAX(product_weight_g) AS max_weight_g
+FROM products
+LIMIT 500",,True
+e19,easy,True,1,1.54,2554,"SELECT
+  COUNT(*) AS delivered_orders
+FROM orders
+WHERE
+  order_status = 'delivered'
+LIMIT 500",,True
+e20,easy,True,1,1.56,2511,"SELECT
+  seller_city AS city,
+  COUNT(*) AS sellers
+FROM sellers
+GROUP BY
+  seller_city
+ORDER BY
+  sellers DESC
+LIMIT 1",,True
+m01,medium,True,1,2.91,2835,"SELECT
+  CAST(DATE_TRUNC('MONTH', o.order_purchase_timestamp) AS DATE) AS month,
+  COUNT(*) AS delivered_orders
+FROM orders AS o
+WHERE
+  o.order_status = 'delivered'
+  AND o.order_purchase_timestamp >= CAST('2018-01-01' AS DATE)
+  AND o.order_purchase_timestamp < CAST('2019-01-01' AS DATE)
+GROUP BY
+  1
+ORDER BY
+  1
+LIMIT 500",,True
+m02,medium,True,1,2.2,3046,"WITH delivered_orders AS (
+  SELECT
+    order_id
+  FROM orders
+  WHERE
+    order_status = 'delivered'
+)
+SELECT
+  COALESCE(ct.product_category_name_english, p.product_category_name, 'unknown') AS category,
+  ROUND(CAST(AVG(oi.price) AS DECIMAL), 2) AS avg_price
+FROM order_items AS oi
+JOIN delivered_orders AS d
+  ON d.order_id = oi.order_id
+JOIN products AS p
+  ON p.product_id = oi.product_id
+LEFT JOIN category_translation AS ct
+  ON ct.product_category_name = p.product_category_name
+GROUP BY
+  1
+ORDER BY
+  avg_price DESC
+LIMIT 5",,True
+m03,medium,True,1,2.25,2792,"SELECT
+  c.customer_state AS state,
+  COUNT(o.order_id) AS orders
+FROM orders AS o
+JOIN customers AS c
+  ON o.customer_id = c.customer_id
+WHERE
+  o.order_purchase_timestamp >= CAST('2018-01-01' AS DATE)
+  AND o.order_purchase_timestamp < CAST('2019-01-01' AS DATE)
+GROUP BY
+  c.customer_state
+ORDER BY
+  orders DESC
+LIMIT 500",,True
+m04,medium,False,1,1.74,2852,"WITH boleto_orders AS (
+  SELECT DISTINCT
+    order_id
+  FROM order_payments
+  WHERE
+    payment_type = 'boleto'
+), total_orders AS (
+  SELECT
+    COUNT(DISTINCT order_id) AS cnt
+  FROM orders
+)
+SELECT
+  ROUND(100.0 * COUNT(b.order_id) / t.cnt, 2) AS pct_boleto
+FROM total_orders AS t
+LEFT JOIN boleto_orders AS b
+  ON TRUE
+LIMIT 500","column ""t.cnt"" must appear in the GROUP BY clause or be used in an aggregate function
+LINE 13:   ROUND(100.0 * COUNT(b.order_id) / t.cnt, 2) AS pct_boleto
+                                             ^",False
+m05,medium,True,1,2.85,2967,"SELECT
+  COALESCE(t.product_category_name_english, p.product_category_name, 'unknown') AS category,
+  ROUND(CAST(AVG(oi.freight_value) AS DECIMAL), 2) AS avg_freight
+FROM order_items AS oi
+JOIN products AS p
+  ON p.product_id = oi.product_id
+LEFT JOIN category_translation AS t
+  ON t.product_category_name = p.product_category_name
+GROUP BY
+  1
+ORDER BY
+  avg_freight DESC
+LIMIT 5",,True
+m06,medium,False,1,2.9,2668,"SELECT
+  c.customer_state AS state,
+  COUNT(DISTINCT c.customer_unique_id) AS customers
+FROM customers AS c
+JOIN orders AS o
+  ON o.customer_id = c.customer_id
+WHERE
+  o.order_status = 'delivered'
+GROUP BY
+  c.customer_state
+ORDER BY
+  customers DESC
+LIMIT 500",,True
+m07,medium,True,1,2.12,2765,"SELECT
+  c.customer_state,
+  ROUND(
+    CAST(AVG(
+      EXTRACT(EPOCH FROM (
+        o.order_delivered_customer_date - o.order_purchase_timestamp
+      )) / 86400
+    ) AS DECIMAL),
+    2
+  ) AS avg_days
+FROM orders AS o
+JOIN customers AS c
+  ON o.customer_id = c.customer_id
+WHERE
+  o.order_status = 'delivered' AND o.order_delivered_customer_date IS NOT NULL
+GROUP BY
+  c.customer_state
+ORDER BY
+  avg_days DESC
+LIMIT 5",,True
+m08,medium,True,1,2.46,2676,"SELECT
+  CAST(DATE_TRUNC('QUARTER', order_purchase_timestamp) AS DATE) AS quarter_start,
+  COUNT(*) AS orders
+FROM orders
+WHERE
+  order_purchase_timestamp >= CAST('2017-01-01' AS DATE)
+  AND order_purchase_timestamp < CAST('2018-01-01' AS DATE)
+GROUP BY
+  1
+ORDER BY
+  1
+LIMIT 500",,True
+m09,medium,True,1,2.05,2745,"WITH order_counts AS (
+  SELECT
+    order_id,
+    COUNT(*) AS item_cnt
+  FROM order_items
+  GROUP BY
+    order_id
+)
+SELECT
+  oc.order_id AS order_id,
+  oc.item_cnt AS max_items
+FROM order_counts AS oc
+ORDER BY
+  oc.item_cnt DESC
+LIMIT 1",,True
+m10,medium,True,1,2.77,2772,"WITH months AS (
+  SELECT
+    CAST(DATE_TRUNC('MONTH', order_purchase_timestamp) AS DATE) AS month,
+    COUNT(*) AS canceled_orders
+  FROM orders
+  WHERE
+    order_status = 'canceled'
+    AND order_purchase_timestamp >= CAST('2018-01-01' AS DATE)
+    AND order_purchase_timestamp < CAST('2019-01-01' AS DATE)
+  GROUP BY
+    1
+)
+SELECT
+  month,
+  canceled_orders
+FROM months
+ORDER BY
+  month
+LIMIT 500",,True
+m11,medium,True,1,2.02,2640,"SELECT
+  c.customer_city AS city,
+  COUNT(o.order_id) AS orders
+FROM orders AS o
+JOIN customers AS c
+  ON c.customer_id = o.customer_id
+WHERE
+  c.customer_state = 'MG'
+GROUP BY
+  c.customer_city
+ORDER BY
+  orders DESC
+LIMIT 5",,True
+m12,medium,True,1,1.62,2586,"SELECT
+  payment_type,
+  ROUND(CAST(AVG(payment_value) AS DECIMAL), 2) AS avg_payment
+FROM order_payments
+GROUP BY
+  payment_type
+ORDER BY
+  avg_payment DESC
+LIMIT 500",,True
+m13,medium,False,1,2.29,2872,"SELECT
+  COALESCE(t.product_category_name_english, p.product_category_name, 'unknown') AS category,
+  COUNT(DISTINCT oi.seller_id) AS sellers
+FROM order_items AS oi
+JOIN products AS p
+  ON p.product_id = oi.product_id
+LEFT JOIN category_translation AS t
+  ON t.product_category_name = p.product_category_name
+GROUP BY
+  1
+ORDER BY
+  sellers DESC
+LIMIT 500",,True
+m14,medium,True,1,3.72,2677,"SELECT
+  ROUND(
+    CAST(100.0 * SUM(CASE WHEN review_score = 5 THEN 1 ELSE 0 END) / COUNT(*) AS DECIMAL),
+    2
+  ) AS pct_5
+FROM order_reviews
+LIMIT 500",,True
+m15,medium,True,1,2.09,2833,"WITH latest AS (
+  SELECT
+    MAX(order_purchase_timestamp) AS max_ts
+  FROM orders
+)
+SELECT
+  ROUND(SUM(oi.price), 2) AS revenue
+FROM orders AS o
+JOIN latest AS l
+  ON TRUE
+JOIN order_items AS oi
+  ON oi.order_id = o.order_id
+WHERE
+  o.order_status = 'delivered'
+  AND o.order_purchase_timestamp >= l.max_ts - INTERVAL '60 DAYS'
+LIMIT 500",,True
+m16,medium,True,1,2.56,2595,"SELECT
+  payment_type,
+  ROUND(CAST(AVG(payment_installments) AS DECIMAL), 2) AS avg_instalments
+FROM order_payments
+GROUP BY
+  payment_type
+ORDER BY
+  avg_instalments DESC
+LIMIT 500",,True
+m17,medium,True,1,2.96,2942,"WITH order_vals AS (
+  SELECT
+    o.order_id,
+    SUM(oi.price) AS order_total,
+    c.customer_state
+  FROM orders AS o
+  JOIN order_items AS oi
+    ON oi.order_id = o.order_id
+  JOIN customers AS c
+    ON c.customer_id = o.customer_id
+  WHERE
+    o.order_status = 'delivered'
+  GROUP BY
+    o.order_id,
+    c.customer_state
+)
+SELECT
+  customer_state AS state,
+  ROUND(CAST(AVG(order_total) AS DECIMAL), 2) AS avg_order_value
+FROM order_vals
+GROUP BY
+  customer_state
+ORDER BY
+  avg_order_value DESC
+LIMIT 500",,True
+m18,medium,True,1,1.96,2680,"SELECT
+  COUNT(*) AS multi_seller_orders
+FROM (
+  SELECT
+    order_id
+  FROM order_items
+  GROUP BY
+    order_id
+  HAVING
+    COUNT(DISTINCT seller_id) > 1
+) AS sub
+LIMIT 500",,True
+m19,medium,True,1,2.57,3016,"WITH late_by_month AS (
+  SELECT
+    CAST(DATE_TRUNC('MONTH', o.order_purchase_timestamp) AS DATE) AS month,
+    COUNT(*) FILTER(WHERE
+      o.order_delivered_customer_date > o.order_estimated_delivery_date) AS late_cnt
+  FROM orders AS o
+  WHERE
+    o.order_status = 'delivered'
+    AND o.order_delivered_customer_date IS NOT NULL
+    AND o.order_purchase_timestamp >= CAST('2018-01-01' AS DATE)
+    AND o.order_purchase_timestamp < CAST('2019-01-01' AS DATE)
+  GROUP BY
+    1
+  ORDER BY
+    1
+)
+SELECT
+  month,
+  late_cnt
+FROM late_by_month
+LIMIT 500",,True
+m20,medium,True,1,1.7,2581,"SELECT
+  ROUND(
+    CAST(AVG(EXTRACT(EPOCH FROM (
+      order_approved_at - order_purchase_timestamp
+    )) / 3600) AS DECIMAL),
+    2
+  ) AS avg_hours
+FROM orders
+WHERE
+  order_approved_at IS NOT NULL
+LIMIT 500",,True
+m21,medium,True,1,2.88,3078,"SELECT
+  c.customer_state AS state,
+  ROUND(SUM(oi.price), 2) AS revenue
+FROM orders AS o
+JOIN customers AS c
+  ON o.customer_id = c.customer_id
+JOIN order_items AS oi
+  ON oi.order_id = o.order_id
+WHERE
+  o.order_status = 'delivered'
+  AND o.order_purchase_timestamp >= CAST('2018-01-01' AS DATE)
+  AND o.order_purchase_timestamp < CAST('2019-01-01' AS DATE)
+GROUP BY
+  c.customer_state
+ORDER BY
+  revenue DESC
+LIMIT 500",,True
+m22,medium,True,1,1.41,2642,"SELECT
+  ROUND(CAST(PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY
+    price) AS DECIMAL), 2) AS median_price
+FROM order_items
+LIMIT 500",,True
+m23,medium,True,1,2.84,2759,"WITH first_purchase AS (
+  SELECT
+    c.customer_unique_id,
+    MIN(o.order_purchase_timestamp) AS first_ts
+  FROM customers AS c
+  JOIN orders AS o
+    ON o.customer_id = c.customer_id
+  GROUP BY
+    c.customer_unique_id
+)
+SELECT
+  COUNT(*) AS customers_2018
+FROM first_purchase
+WHERE
+  EXTRACT(YEAR FROM first_ts) = 2018
+LIMIT 500",,True
+m24,medium,True,1,1.42,2579,"SELECT
+  COUNT(*) AS orders
+FROM orders
+WHERE
+  EXTRACT(ISODOW FROM order_purchase_timestamp) IN (6, 7)
+LIMIT 500",,True
+m25,medium,True,1,1.97,2735,"SELECT
+  o.order_status,
+  ROUND(CAST(AVG(r.review_score) AS DECIMAL), 2) AS avg_score,
+  COUNT(*) AS review_cnt
+FROM order_reviews AS r
+JOIN orders AS o
+  ON o.order_id = r.order_id
+GROUP BY
+  o.order_status
+ORDER BY
+  avg_score DESC
+LIMIT 500",,True
+h01,hard,False,1,3.83,3178,"WITH order_avg AS (
+  SELECT
+    order_id,
+    AVG(review_score) AS order_score
+  FROM order_reviews
+  GROUP BY
+    order_id
+), seller_rev AS (
+  SELECT
+    oi.seller_id,
+    COUNT(DISTINCT oi.order_id) AS reviewed_orders,
+    ROUND(CAST(AVG(oa.order_score) AS DECIMAL), 2) AS avg_score
+  FROM order_items AS oi
+  JOIN order_avg AS oa
+    ON oa.order_id = oi.order_id
+  GROUP BY
+    oi.seller_id
+  HAVING
+    COUNT(DISTINCT oi.order_id) >= 100
+)
+SELECT
+  seller_id,
+  avg_score,
+  reviewed_orders
+FROM seller_rev
+ORDER BY
+  avg_score DESC
+LIMIT 3",,True
+h02,hard,True,1,2.6,2684,"WITH per_customer AS (
+  SELECT
+    c.customer_unique_id,
+    COUNT(DISTINCT o.order_id) AS orders
+  FROM customers AS c
+  JOIN orders AS o
+    ON o.customer_id = c.customer_id
+  GROUP BY
+    c.customer_unique_id
+)
+SELECT
+  ROUND(CAST(100.0 * SUM(CASE WHEN orders > 1 THEN 1 ELSE 0 END) / COUNT(*) AS DECIMAL), 2) AS repeat_pct
+FROM per_customer
+LIMIT 500",,True
+h03,hard,True,1,3.66,3133,"WITH cat_rev AS (
+  SELECT
+    CAST(EXTRACT(YEAR FROM o.order_purchase_timestamp) AS INT) AS yr,
+    COALESCE(t.product_category_name_english, p.product_category_name, 'unknown') AS category,
+    ROUND(SUM(oi.price), 2) AS revenue
+  FROM orders AS o
+  JOIN order_items AS oi
+    ON oi.order_id = o.order_id
+  JOIN products AS p
+    ON p.product_id = oi.product_id
+  LEFT JOIN category_translation AS t
+    ON t.product_category_name = p.product_category_name
+  WHERE
+    o.order_status = 'delivered'
+  GROUP BY
+    1,
+    2
+), ranked AS (
+  SELECT
+    yr,
+    category,
+    revenue,
+    ROW_NUMBER() OVER (PARTITION BY yr ORDER BY revenue DESC) AS rn
+  FROM cat_rev
+)
+SELECT
+  yr AS year,
+  category,
+  revenue
+FROM ranked
+WHERE
+  rn = 1
+ORDER BY
+  year
+LIMIT 500",,True
+h04,hard,True,1,3.46,3271,"WITH monthly AS (
+  SELECT
+    CAST(DATE_TRUNC('MONTH', o.order_purchase_timestamp) AS DATE) AS month,
+    ROUND(SUM(oi.price), 2) AS revenue
+  FROM orders AS o
+  JOIN order_items AS oi
+    ON oi.order_id = o.order_id
+  WHERE
+    o.order_status = 'delivered'
+    AND o.order_purchase_timestamp >= '2018-01-01'
+    AND o.order_purchase_timestamp < '2018-09-01'
+  GROUP BY
+    1
+)
+SELECT
+  month,
+  CASE
+    WHEN prev_rev IS NULL OR prev_rev = 0
+    THEN NULL
+    ELSE ROUND(100.0 * (
+      revenue - prev_rev
+    ) / prev_rev, 2)
+  END AS pct_change
+FROM (
+  SELECT
+    month,
+    revenue,
+    LAG(revenue) OVER (ORDER BY month) AS prev_rev
+  FROM monthly
+) AS t
+ORDER BY
+  month
+LIMIT 500",,True
+h05,hard,True,1,8.82,3575,"WITH cat_orders AS (
+  SELECT DISTINCT
+    COALESCE(ct.product_category_name_english, p.product_category_name, 'unknown') AS category,
+    o.order_id,
+    CASE
+      WHEN o.order_delivered_customer_date > o.order_estimated_delivery_date
+      THEN 1
+      ELSE 0
+    END AS is_late
+  FROM orders AS o
+  JOIN order_items AS oi
+    ON oi.order_id = o.order_id
+  JOIN products AS p
+    ON p.product_id = oi.product_id
+  LEFT JOIN category_translation AS ct
+    ON ct.product_category_name = p.product_category_name
+  WHERE
+    o.order_status = 'delivered'
+    AND o.order_delivered_customer_date IS NOT NULL
+    AND o.order_estimated_delivery_date IS NOT NULL
+)
+SELECT
+  category,
+  ROUND(CAST(100.0 * CAST(SUM(is_late) AS DECIMAL) / COUNT(*) AS DECIMAL), 2) AS late_pct,
+  COUNT(*) AS orders_cnt
+FROM cat_orders
+GROUP BY
+  category
+HAVING
+  COUNT(*) >= 500
+ORDER BY
+  late_pct DESC
+LIMIT 1",,True
+h06,hard,True,1,5.29,2977,"WITH items_cnt AS (
+  SELECT
+    order_id,
+    COUNT(*) AS cnt
+  FROM order_items
+  GROUP BY
+    order_id
+  HAVING
+    COUNT(*) > 1
+), rev_avg AS (
+  SELECT
+    order_id,
+    AVG(review_score) AS avg_score
+  FROM order_reviews
+  GROUP BY
+    order_id
+)
+SELECT
+  ROUND(CAST(AVG(r.avg_score) AS DECIMAL), 2) AS avg_review_score
+FROM items_cnt AS i
+JOIN rev_avg AS r
+  ON r.order_id = i.order_id
+LIMIT 500",,True
+h07,hard,False,1,3.14,3067,"WITH order_freight AS (
+  SELECT
+    o.order_id,
+    SUM(oi.freight_value) AS freight_total
+  FROM orders AS o
+  JOIN order_items AS oi
+    ON oi.order_id = o.order_id
+  WHERE
+    o.order_status = 'delivered'
+  GROUP BY
+    o.order_id
+)
+SELECT
+  c.customer_state AS state,
+  ROUND(CAST(AVG(of.freight_total) AS DECIMAL), 2) AS avg_freight
+FROM order_freight AS of
+JOIN orders AS o
+  ON o.order_id = of.order_id
+JOIN customers AS c
+  ON c.customer_id = o.customer_id
+GROUP BY
+  c.customer_state
+ORDER BY
+  avg_freight DESC
+LIMIT 3",,True
+h08,hard,True,1,3.68,3113,"WITH seller_rev AS (
+  SELECT
+    oi.seller_id,
+    SUM(oi.price) AS rev
+  FROM order_items AS oi
+  JOIN orders AS o
+    ON o.order_id = oi.order_id
+  WHERE
+    o.order_status = 'delivered'
+  GROUP BY
+    oi.seller_id
+), total AS (
+  SELECT
+    SUM(rev) AS total_rev
+  FROM seller_rev
+), top10 AS (
+  SELECT
+    SUM(rev) AS top10_rev
+  FROM (
+    SELECT
+      rev
+    FROM seller_rev
+    ORDER BY
+      rev DESC
+    LIMIT 10
+  ) AS t
+)
+SELECT
+  ROUND((
+    t.top10_rev / tot.total_rev
+  ) * 100, 2) AS top10_share_percent
+FROM top10 AS t, total AS tot
+LIMIT 500",,True
+h09,hard,True,1,2.89,2767,"WITH cust_months AS (
+  SELECT
+    c.customer_unique_id,
+    CAST(DATE_TRUNC('MONTH', o.order_purchase_timestamp) AS DATE) AS month
+  FROM orders AS o
+  JOIN customers AS c
+    ON o.customer_id = c.customer_id
+), month_counts AS (
+  SELECT
+    customer_unique_id,
+    COUNT(DISTINCT month) AS month_cnt
+  FROM cust_months
+  GROUP BY
+    customer_unique_id
+  HAVING
+    COUNT(DISTINCT month) >= 3
+)
+SELECT
+  COUNT(*) AS customers
+FROM month_counts
+LIMIT 500",,True
+h10,hard,True,1,4.33,3006,"WITH monthly AS (
+  SELECT
+    CAST(DATE_TRUNC('MONTH', o.order_purchase_timestamp) AS DATE) AS month,
+    SUM(oi.price) AS month_rev
+  FROM orders AS o
+  JOIN order_items AS oi
+    ON oi.order_id = o.order_id
+  WHERE
+    o.order_status = 'delivered'
+    AND o.order_purchase_timestamp >= '2017-01-01'
+    AND o.order_purchase_timestamp < '2018-01-01'
+  GROUP BY
+    1
+)
+SELECT
+  month,
+  ROUND(
+    SUM(month_rev) OVER (ORDER BY month ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW),
+    2
+  ) AS running_total
+FROM monthly
+ORDER BY
+  month
+LIMIT 500",,True
+h11,hard,True,1,3.3,2851,"WITH order_totals AS (
+  SELECT
+    order_id,
+    SUM(payment_value) AS total_paid,
+    COUNT(DISTINCT payment_type) AS payment_type_cnt
+  FROM order_payments
+  GROUP BY
+    order_id
+  HAVING
+    COUNT(DISTINCT payment_type) > 1
+)
+SELECT
+  ROUND(CAST(AVG(total_paid) AS DECIMAL), 2) AS avg_total_paid
+FROM order_totals
+LIMIT 500",,True
+h12,hard,False,1,4.48,3595,"WITH category_per_order AS (
+  SELECT DISTINCT
+    o.order_id,
+    COALESCE(t.product_category_name_english, p.product_category_name) AS category
+  FROM orders AS o
+  JOIN order_items AS oi
+    ON oi.order_id = o.order_id
+  JOIN products AS p
+    ON p.product_id = oi.product_id
+  LEFT JOIN category_translation AS t
+    ON t.product_category_name = p.product_category_name
+  WHERE
+    p.product_category_name IS NOT NULL
+)
+SELECT
+  c.category,
+  ROUND(CAST(AVG(r.review_score) AS DECIMAL), 2) AS avg_score,
+  COUNT(DISTINCT c.order_id) AS reviewed_orders
+FROM category_per_order AS c
+JOIN order_reviews AS r
+  ON r.order_id = c.order_id
+GROUP BY
+  c.category
+HAVING
+  COUNT(DISTINCT c.order_id) >= 1000
+ORDER BY
+  avg_score DESC
+LIMIT 3",,True
+h13,hard,True,1,2.73,3180,"WITH ranked AS (
+  SELECT
+    c.customer_unique_id,
+    o.order_purchase_timestamp,
+    ROW_NUMBER() OVER (PARTITION BY c.customer_unique_id ORDER BY o.order_purchase_timestamp) AS rn
+  FROM orders AS o
+  JOIN customers AS c
+    ON o.customer_id = c.customer_id
+), first_second AS (
+  SELECT
+    customer_unique_id,
+    MIN(CASE WHEN rn = 1 THEN order_purchase_timestamp END) AS first_order,
+    MIN(CASE WHEN rn = 2 THEN order_purchase_timestamp END) AS second_order
+  FROM ranked
+  GROUP BY
+    customer_unique_id
+  HAVING
+    MIN(CASE WHEN rn = 2 THEN 1 END) IS NOT NULL
+)
+SELECT
+  ROUND(
+    CAST(AVG(EXTRACT(EPOCH FROM (
+      second_order - first_order
+    )) / 86400) AS DECIMAL),
+    2
+  ) AS avg_days_between
+FROM first_second
+LIMIT 500",,True
+h14,hard,True,1,3.19,2905,"SELECT
+  CAST(DATE_TRUNC('MONTH', o.order_purchase_timestamp) AS DATE) AS month,
+  ROUND(
+    CAST(100.0 * COUNT(*) FILTER(WHERE
+      o.order_delivered_customer_date > o.order_estimated_delivery_date) / COUNT(*) AS DECIMAL),
+    2
+  ) AS late_pct
+FROM orders AS o
+WHERE
+  o.order_status = 'delivered'
+  AND o.order_delivered_customer_date IS NOT NULL
+  AND o.order_estimated_delivery_date IS NOT NULL
+  AND EXTRACT(YEAR FROM o.order_purchase_timestamp) = 2018
+GROUP BY
+  1
+ORDER BY
+  1
+LIMIT 500",,True
+h15,hard,True,1,2.5,2873,"SELECT
+  s.seller_state,
+  ROUND(SUM(oi.price), 2) AS revenue
+FROM order_items AS oi
+JOIN orders AS o
+  ON o.order_id = oi.order_id
+JOIN sellers AS s
+  ON s.seller_id = oi.seller_id
+JOIN customers AS c
+  ON c.customer_id = o.customer_id
+WHERE
+  o.order_status = 'delivered' AND s.seller_state <> c.customer_state
+GROUP BY
+  s.seller_state
+ORDER BY
+  revenue DESC
+LIMIT 1",,True

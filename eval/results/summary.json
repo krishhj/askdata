@@ -15,10 +15,74 @@
       "median_seconds": 2.2249999999999996,
       "p95_seconds": 5.464499999999941,
       "avg_tokens": 2603.5666666666666
+    },
+    "A": {
+      "label": "All tables, names only",
+      "questions": 60,
+      "overall": 0.7,
+      "by_difficulty": {
+        "easy": 0.95,
+        "hard": 0.4,
+        "medium": 0.68
+      },
+      "valid_sql_rate": 1.0,
+      "first_try_accuracy": 0.7,
+      "retry_rescue_rate": null,
+      "median_seconds": 1.9449999999999998,
+      "p95_seconds": 3.997499999999998,
+      "avg_tokens": 1007.0666666666667
+    },
+    "B": {
+      "label": "+ schema notes",
+      "questions": 60,
+      "overall": 0.85,
+      "by_difficulty": {
+        "easy": 1.0,
+        "hard": 0.6666666666666666,
+        "medium": 0.84
+      },
+      "valid_sql_rate": 0.9833333333333333,
+      "first_try_accuracy": 0.85,
+      "retry_rescue_rate": null,
+      "median_seconds": 2.335,
+      "p95_seconds": 4.444500000000001,
+      "avg_tokens": 2572.55
+    },
+    "C": {
+      "label": "+ examples",
+      "questions": 60,
+      "overall": 0.9,
+      "by_difficulty": {
+        "easy": 1.0,
+        "hard": 0.8,
+        "medium": 0.88
+      },
+      "valid_sql_rate": 0.9833333333333333,
+      "first_try_accuracy": 0.9,
+      "retry_rescue_rate": null,
+      "median_seconds": 2.3099999999999996,
+      "p95_seconds": 4.520499999999998,
+      "avg_tokens": 2776.9166666666665
+    },
+    "D": {
+      "label": "+ retries",
+      "questions": 60,
+      "overall": 0.9666666666666667,
+      "by_difficulty": {
+        "easy": 1.0,
+        "hard": 0.9333333333333333,
+        "medium": 0.96
+      },
+      "valid_sql_rate": 1.0,
+      "first_try_accuracy": 0.9666666666666667,
+      "retry_rescue_rate": null,
+      "median_seconds": 2.33,
+      "p95_seconds": 19.483499999999946,
+      "avg_tokens": 2759.7
     }
   },
   "run": {
-    "finished_at": "2026-11-02T23:38:35",
+    "finished_at": "2026-11-04T09:20:49",
     "model": "openai/gpt-oss-120b",
     "gold_questions": 60,
     "allow_extra_columns": true
